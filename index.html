@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>푸리 · 지식 위키 그래프</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<style>
+  :root { --bg: #1a1a26; --panel: #22222f; --text: #e2e0f0; --muted: #77748f; --accent: #a78bfa; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Pretendard', 'Malgun Gothic', sans-serif; overflow: hidden; }
+  #graph { width: 100vw; height: 100vh; cursor: grab; }
+  header { position: fixed; top: 20px; left: 24px; z-index: 10; pointer-events: none; }
+  header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+  header p { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  #legend { position: fixed; bottom: 20px; left: 24px; z-index: 10; background: rgba(22,27,34,.85);
+            border: 1px solid #30363d; border-radius: 10px; padding: 12px 14px; font-size: 12px; }
+  #legend div { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+  #legend span.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  #hint { position: fixed; bottom: 20px; right: 24px; z-index: 10; color: var(--muted); font-size: 11px; }
+  .node-label { fill: var(--text); pointer-events: none; font-size: 11px; text-shadow: 0 1px 4px #000; }
+</style>
+</head>
+<body>
+<header>
+  <h1>푸리(리드마이사주) 지식 위키</h1>
+  <p>페이지 30개 · 연결 61개 · 2026-08-03 기준 · 제목/구조만 포함(본문 미포함)</p>
+</header>
+<div id="legend"></div>
+<div id="hint">드래그: 이동 · 휠: 확대 · 노드 드래그: 고정</div>
+<div id="graph"></div>
+<script>
+const data = {"nodes": [{"id": "KPI·실적", "group": "회사", "deg": 4}, {"id": "SNS", "group": "기타", "deg": 2}, {"id": "SNS 채널 전략", "group": "마케팅", "deg": 5}, {"id": "경쟁사", "group": "기타", "deg": 2}, {"id": "고객 CS 대응", "group": "노하우", "deg": 3}, {"id": "고객 CS 정책", "group": "회사", "deg": 4}, {"id": "고객 피드백", "group": "회사", "deg": 4}, {"id": "광고", "group": "기타", "deg": 5}, {"id": "디자인", "group": "기타", "deg": 2}, {"id": "리더십 실전 메모", "group": "기타", "deg": 2}, {"id": "리드마이사주", "group": "회사", "deg": 16}, {"id": "리브랜딩 푸리", "group": "마케팅", "deg": 4}, {"id": "리포트 품질·프롬프트", "group": "노하우", "deg": 4}, {"id": "메타광고 운영", "group": "마케팅", "deg": 5}, {"id": "발표·피칭", "group": "기타", "deg": 2}, {"id": "서비스 확장", "group": "기타", "deg": 3}, {"id": "아이디어 메모", "group": "기타", "deg": 2}, {"id": "아이디어 백로그", "group": "회사", "deg": 5}, {"id": "온보딩 Q&A", "group": "회사", "deg": 4}, {"id": "유저 인터뷰", "group": "기타", "deg": 3}, {"id": "자기개선", "group": "기타", "deg": 2}, {"id": "자료 아카이브", "group": "회사", "deg": 3}, {"id": "제품 개발 연혁", "group": "회사", "deg": 4}, {"id": "제품 그로스", "group": "기타", "deg": 8}, {"id": "제품 디자인", "group": "회사", "deg": 4}, {"id": "조직문화·운영원칙", "group": "회사", "deg": 4}, {"id": "지원사업", "group": "회사", "deg": 4}, {"id": "채용 채널", "group": "기타", "deg": 2}, {"id": "카카오톡 채널 운영", "group": "마케팅", "deg": 5}, {"id": "팀", "group": "회사", "deg": 5}], "links": [{"source": "KPI·실적", "target": "리드마이사주"}, {"source": "KPI·실적", "target": "조직문화·운영원칙"}, {"source": "KPI·실적", "target": "지원사업"}, {"source": "KPI·실적", "target": "팀"}, {"source": "SNS", "target": "광고"}, {"source": "SNS", "target": "제품 그로스"}, {"source": "SNS 채널 전략", "target": "리드마이사주"}, {"source": "SNS 채널 전략", "target": "리브랜딩 푸리"}, {"source": "SNS 채널 전략", "target": "메타광고 운영"}, {"source": "SNS 채널 전략", "target": "카카오톡 채널 운영"}, {"source": "SNS 채널 전략", "target": "팀"}, {"source": "경쟁사", "target": "서비스 확장"}, {"source": "경쟁사", "target": "제품 그로스"}, {"source": "고객 CS 대응", "target": "고객 CS 정책"}, {"source": "고객 CS 대응", "target": "발표·피칭"}, {"source": "고객 CS 대응", "target": "자기개선"}, {"source": "고객 CS 정책", "target": "고객 피드백"}, {"source": "고객 CS 정책", "target": "리드마이사주"}, {"source": "고객 CS 정책", "target": "아이디어 백로그"}, {"source": "고객 피드백", "target": "리드마이사주"}, {"source": "고객 피드백", "target": "아이디어 백로그"}, {"source": "고객 피드백", "target": "자료 아카이브"}, {"source": "광고", "target": "디자인"}, {"source": "광고", "target": "메타광고 운영"}, {"source": "광고", "target": "제품 그로스"}, {"source": "광고", "target": "카카오톡 채널 운영"}, {"source": "디자인", "target": "제품 그로스"}, {"source": "리더십 실전 메모", "target": "유저 인터뷰"}, {"source": "리더십 실전 메모", "target": "채용 채널"}, {"source": "리드마이사주", "target": "리브랜딩 푸리"}, {"source": "리드마이사주", "target": "리포트 품질·프롬프트"}, {"source": "리드마이사주", "target": "메타광고 운영"}, {"source": "리드마이사주", "target": "아이디어 백로그"}, {"source": "리드마이사주", "target": "온보딩 Q&A"}, {"source": "리드마이사주", "target": "자료 아카이브"}, {"source": "리드마이사주", "target": "제품 개발 연혁"}, {"source": "리드마이사주", "target": "제품 디자인"}, {"source": "리드마이사주", "target": "조직문화·운영원칙"}, {"source": "리드마이사주", "target": "지원사업"}, {"source": "리드마이사주", "target": "카카오톡 채널 운영"}, {"source": "리드마이사주", "target": "팀"}, {"source": "리브랜딩 푸리", "target": "메타광고 운영"}, {"source": "리브랜딩 푸리", "target": "카카오톡 채널 운영"}, {"source": "리포트 품질·프롬프트", "target": "온보딩 Q&A"}, {"source": "리포트 품질·프롬프트", "target": "제품 개발 연혁"}, {"source": "리포트 품질·프롬프트", "target": "제품 디자인"}, {"source": "메타광고 운영", "target": "카카오톡 채널 운영"}, {"source": "발표·피칭", "target": "자기개선"}, {"source": "서비스 확장", "target": "유저 인터뷰"}, {"source": "서비스 확장", "target": "제품 그로스"}, {"source": "아이디어 메모", "target": "아이디어 백로그"}, {"source": "아이디어 메모", "target": "제품 그로스"}, {"source": "아이디어 백로그", "target": "자료 아카이브"}, {"source": "온보딩 Q&A", "target": "제품 개발 연혁"}, {"source": "온보딩 Q&A", "target": "제품 디자인"}, {"source": "유저 인터뷰", "target": "제품 그로스"}, {"source": "제품 개발 연혁", "target": "제품 디자인"}, {"source": "제품 그로스", "target": "채용 채널"}, {"source": "조직문화·운영원칙", "target": "지원사업"}, {"source": "조직문화·운영원칙", "target": "팀"}, {"source": "지원사업", "target": "팀"}]};
+const COLORS = {"회사": "#b8b3e0", "마케팅": "#c9b3e6", "노하우": "#a8c4e0", "소스": "#d6cbe8", "기타": "#9b96c4"};
+const W = innerWidth, H = innerHeight;
+
+const svg = d3.select('#graph').append('svg').attr('width', W).attr('height', H);
+const g = svg.append('g');
+svg.call(d3.zoom().scaleExtent([0.2, 4]).on('zoom', e => g.attr('transform', e.transform)));
+
+const sim = d3.forceSimulation(data.nodes)
+  .force('link', d3.forceLink(data.links).id(d => d.id).distance(90).strength(0.6))
+  .force('charge', d3.forceManyBody().strength(-260))
+  .force('center', d3.forceCenter(W / 2, H / 2))
+  .force('collide', d3.forceCollide().radius(d => 14 + d.deg * 1.5));
+
+const link = g.append('g').selectAll('line').data(data.links).join('line')
+  .attr('stroke', '#3a3a52').attr('stroke-width', 1).attr('stroke-opacity', 0.55);
+
+const node = g.append('g').selectAll('circle').data(data.nodes).join('circle')
+  .attr('r', d => 5 + Math.sqrt(d.deg) * 3)
+  .attr('fill', d => COLORS[d.group] || '#9b96c4')
+  .style('filter', 'drop-shadow(0 0 8px rgba(167,139,250,.45))')
+  .call(d3.drag()
+    .on('start', (e, d) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+    .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y; })
+    .on('end', (e, d) => { if (!e.active) sim.alphaTarget(0); }));
+
+const label = g.append('g').selectAll('text').data(data.nodes).join('text')
+  .attr('class', 'node-label').attr('text-anchor', 'middle')
+  .attr('dy', d => -(10 + Math.sqrt(d.deg) * 3))
+  .text(d => d.id);
+
+const neighbors = new Set(data.links.flatMap(l => [l.source.id + '|' + l.target.id, l.target.id + '|' + l.source.id]));
+node.on('mouseover', (e, d) => {
+    node.attr('opacity', n => n.id === d.id || neighbors.has(d.id + '|' + n.id) ? 1 : 0.12)
+        .attr('fill', n => n.id === d.id ? '#c4b5fd' : (n.id !== d.id && neighbors.has(d.id + '|' + n.id) ? '#b5a8f0' : COLORS[n.group]));
+    label.attr('opacity', n => n.id === d.id || neighbors.has(d.id + '|' + n.id) ? 1 : 0.08);
+    link.attr('stroke-opacity', l => l.source.id === d.id || l.target.id === d.id ? 0.95 : 0.05)
+        .attr('stroke', l => l.source.id === d.id || l.target.id === d.id ? '#a78bfa' : '#3a3a52')
+        .attr('stroke-width', l => l.source.id === d.id || l.target.id === d.id ? 1.6 : 1);
+  })
+  .on('mouseout', () => {
+    node.attr('opacity', 1).attr('fill', n => COLORS[n.group] || '#9b96c4');
+    label.attr('opacity', 1);
+    link.attr('stroke-opacity', 0.55).attr('stroke', '#3a3a52').attr('stroke-width', 1);
+  });
+
+sim.on('tick', () => {
+  link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+  node.attr('cx', d => d.x).attr('cy', d => d.y);
+  label.attr('x', d => d.x).attr('y', d => d.y);
+});
+
+const legend = d3.select('#legend');
+Object.entries(COLORS).forEach(([k, c]) => {
+  legend.append('div').html(`<span class="dot" style="background:${c}"></span>${k}`);
+});
+</script>
+</body>
+</html>
